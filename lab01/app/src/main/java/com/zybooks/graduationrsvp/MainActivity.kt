@@ -10,6 +10,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.sp
 import com.zybooks.graduationrsvp.ui.theme.GraduationRSVPTheme
 
 class MainActivity : ComponentActivity() {
@@ -32,6 +33,7 @@ class MainActivity : ComponentActivity() {
 fun GradScreen(modifier: Modifier = Modifier) {
     Text(
         text = "Graduation Announcement",
+        fontSize = 50.sp,
         modifier = modifier
     )
 }
