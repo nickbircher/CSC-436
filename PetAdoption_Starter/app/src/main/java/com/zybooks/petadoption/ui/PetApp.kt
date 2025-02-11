@@ -96,9 +96,9 @@ fun PetApp(
 
 @Composable
 fun ListScreen(
-   petList: List<Pet>,
    onImageClick: (Pet) -> Unit,
-   modifier: Modifier = Modifier
+   modifier: Modifier = Modifier,
+   viewModel: ListViewModel = viewModel()
 ) {
    Scaffold(
       topBar = {
@@ -112,7 +112,7 @@ fun ListScreen(
          contentPadding = PaddingValues(0.dp),
          modifier = modifier.padding(innerPadding)
       ) {
-         items(petList) { pet ->
+         items(viewModel.petList) { pet ->
             Image(
                painter = painterResource(id = pet.imageId),
                contentDescription = "${pet.type} ${pet.gender}",
@@ -126,24 +126,16 @@ fun ListScreen(
    }
 }
 
-@Preview
-@Composable
-fun PreviewListScreen() {
-   PetAdoptionTheme {
-      ListScreen(
-         petList = PetDataSource().loadPets(),
-         onImageClick = { }
-      )
-   }
-}
 
 @Composable
 fun DetailScreen(
-   pet: Pet,
+   petId: Int,
    onAdoptClick: () -> Unit,
    modifier: Modifier = Modifier,
+   viewModel: DetailViewModel = viewModel(),
    onUpClick: () -> Unit = { }
 ) {
+   val pet = viewModel.getPet(petId)
    val gender = if (pet.gender == PetGender.MALE) "Male" else "Female"
 
    Scaffold(
@@ -199,10 +191,12 @@ fun DetailScreen(
 
 @Composable
 fun AdoptScreen(
-   pet: Pet,
+   petId: Int,
    modifier: Modifier = Modifier,
+   viewModel: AdoptViewModel = viewModel(),
    onUpClick: () -> Unit = { }
 ) {
+   val pet = viewModel.getPet(petId)
    Scaffold(
       topBar = {
          PetAppBar(
@@ -265,4 +259,37 @@ fun PetAppBar(
          }
       }
    )
+}
+
+
+@Preview
+@Composable
+fun PreviewListScreen() {
+   PetAdoptionTheme {
+      ListScreen(
+         //petList = PetDataSource().loadPets(),
+         onImageClick = {}
+      )
+   }
+}
+
+@Preview
+@Composable
+fun PreviewDetailScreen() {
+   val pet = PetDataSource().loadPets()[0]
+   PetAdoptionTheme {
+      DetailScreen(
+         petId = pet.id,
+         onAdoptClick = {}
+      )
+   }
+}
+
+@Preview
+@Composable
+fun PreviewAdoptScreen() {
+   val pet = PetDataSource().loadPets()[0]
+   PetAdoptionTheme {
+      AdoptScreen(pet.id)
+   }
 }
