@@ -108,10 +108,12 @@ fun ViewPostScreen(
                 text = "Description",
                 style = MaterialTheme.typography.titleMedium
             )
-            Text(
-                text = post.description,
-                style = MaterialTheme.typography.bodyMedium
-            )
+            post.description?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
 
             // Tags
             if (post.tags.isNotEmpty()) {
