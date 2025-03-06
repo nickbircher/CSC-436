@@ -40,8 +40,7 @@ fun AdventureApp() {
             },
             onAddClick = {
                navController.navigate(Routes.Upload)
-            },
-            isHomeScreen = true // New parameter to indicate this is the home screen
+            }
          )
       }
 

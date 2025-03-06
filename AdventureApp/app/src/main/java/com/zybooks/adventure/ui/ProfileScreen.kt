@@ -52,8 +52,6 @@ fun ProfileScreen(
     onPostClick: (Post) -> Unit,
     onAddClick: () -> Unit,
     modifier: Modifier = Modifier,
-    onUpClick: () -> Unit = { },
-    isHomeScreen: Boolean = false, // New parameter to indicate if this is the home screen
     viewModel: ProfileViewModel = viewModel()
 ) {
     val posts by viewModel.filteredPosts.observeAsState(emptyList())
@@ -64,14 +62,7 @@ fun ProfileScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("My Posts") },
-                navigationIcon = if (!isHomeScreen) {
-                    {
-                        IconButton(onClick = onUpClick) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                        }
-                    }
-                } else null
+                title = { Text("My Posts") }
             )
         },
         floatingActionButton = {
