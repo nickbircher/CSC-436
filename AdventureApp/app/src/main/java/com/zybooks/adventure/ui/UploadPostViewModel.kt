@@ -1,78 +1,113 @@
 package com.zybooks.adventure.ui
 
 import android.net.Uri
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
+import androidx.lifecycle.createSavedStateHandle
+import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
+import com.zybooks.adventure.AdventureApplication
 import com.zybooks.adventure.data.Post
 import com.zybooks.adventure.data.PostRepository
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
-class UploadPostViewModel(private val repository: PostRepository) : ViewModel() {
+class UploadPostViewModel(
+   savedStateHandle: SavedStateHandle,
+   private val repository: PostRepository
+) : ViewModel() {
+
+   companion object {
+      val Factory: ViewModelProvider.Factory = viewModelFactory {
+         initializer {
+            val application = (this[APPLICATION_KEY] as AdventureApplication)
+            UploadPostViewModel(
+               this.createSavedStateHandle(),
+               application.postRepository
+            )
+         }
+      }
+   }
 
    // Media URI
-   private val _mediaUri = MutableLiveData<Uri?>()
-   val mediaUri: LiveData<Uri?> = _mediaUri
-
-   // Latitude and longitude
-   private val _latitude = MutableLiveData<String>("")
-   val latitude: LiveData<String> = _latitude
-
-   private val _longitude = MutableLiveData<String>("")
-   val longitude: LiveData<String> = _longitude
-
-   // Specific directions
-   private val _specificDirections = MutableLiveData<String>("")
-   val specificDirections: LiveData<String> = _specificDirections
-
-   // Selected tags
-   private val _selectedTags = MutableLiveData<List<String>>(emptyList())
-   val selectedTags: LiveData<List<String>> = _selectedTags
-
-   // Upload status
-   private val _uploadStatus = MutableLiveData<UploadStatus>()
-   val uploadStatus: LiveData<UploadStatus> = _uploadStatus
+   var mediaUri by mutableStateOf<Uri?>(null)
+      private set
 
    // Form fields
-   private val _title = MutableLiveData<String>("")
-   val title: LiveData<String> = _title
+   var title by mutableStateOf("")
+      private set
 
-   private val _description = MutableLiveData<String>("")
-   val description: LiveData<String> = _description
+   var description by mutableStateOf("")
+      private set
 
+   var latitude by mutableStateOf("")
+      private set
+
+   var longitude by mutableStateOf("")
+      private set
+
+   var specificDirections by mutableStateOf("")
+      private set
+
+   var selectedTags by mutableStateOf<List<String>>(emptyList())
+      private set
+
+   // Upload status
+   private val _uploadStatus = MutableStateFlow<UploadStatus?>(null)
+   val uploadStatus: StateFlow<UploadStatus?> = _uploadStatus.asStateFlow()
+
+   // Set media URI
    fun setMediaUri(uri: Uri?) {
-      _mediaUri.value = uri
+      mediaUri = uri
    }
 
-   fun setTitle(title: String) {
-      _title.value = title
+   // Set title
+   fun setTitle(value: String) {
+      title = value
    }
 
-   fun setDescription(description: String) {
-      _description.value = description
+   // Set description
+   fun setDescription(value: String) {
+      description = value
    }
 
-   fun setLatitude(latitude: String) {
-      _latitude.value = latitude
+   // Set latitude
+   fun setLatitude(value: String) {
+      latitude = value
    }
 
-   fun setLongitude(longitude: String) {
-      _longitude.value = longitude
+   // Set longitude
+   fun setLongitude(value: String) {
+      longitude = value
    }
 
-   fun setSpecificDirections(directions: String) {
-      _specificDirections.value = directions
+   // Set specific directions
+   fun setSpecificDirections(value: String) {
+      specificDirections = value
    }
 
+   // Set selected tags
    fun setSelectedTags(tags: List<String>) {
-      _selectedTags.value = tags
+      selectedTags = tags
    }
 
+   // Save post
    fun savePost() {
       viewModelScope.launch {
          _uploadStatus.value = UploadStatus.Loading
 
          try {
-            val uri = mediaUri.value
+            val uri = mediaUri
             if (uri != null) {
                val savedMediaUri = withContext(Dispatchers.IO) {
                   repository.saveMediaToStorage(uri)
@@ -80,16 +115,16 @@ class UploadPostViewModel(private val repository: PostRepository) : ViewModel() 
 
                if (savedMediaUri != null) {
                   // Parse latitude and longitude from user input
-                  val lat = latitude.value?.toDoubleOrNull()
-                  val lng = longitude.value?.toDoubleOrNull()
+                  val lat = latitude.toDoubleOrNull()
+                  val lng = longitude.toDoubleOrNull()
 
                   val post = Post(
                      mediaUri = savedMediaUri,
-                     title = title.value ?: "",
-                     description = description.value ?: "",
+                     title = title,
+                     description = description,
                      latitude = lat,
                      longitude = lng,
-                     tags = selectedTags.value ?: emptyList(),
+                     tags = selectedTags,
                      timestamp = System.currentTimeMillis()
                   )
 
@@ -107,8 +142,16 @@ class UploadPostViewModel(private val repository: PostRepository) : ViewModel() 
       }
    }
 
+   // Reset upload status
+   fun resetUploadStatus() {
+      _uploadStatus.value = null
+   }
+
+   // Upload status sealed class
    sealed class UploadStatus {
       object Loading : UploadStatus()
       data class Success(val postId: Int) : UploadStatus()
       data class Error(val message: String) : UploadStatus()
-   }}
+   }
+}
+

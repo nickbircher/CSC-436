@@ -1,56 +1,85 @@
 package com.zybooks.adventure.ui
 
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
+import androidx.lifecycle.createSavedStateHandle
+import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
+import com.zybooks.adventure.AdventureApplication
 import com.zybooks.adventure.data.Post
 import com.zybooks.adventure.data.PostRepository
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
-class ProfileViewModel(private val repository: PostRepository) : ViewModel() {
+class ProfileViewModel(
+   savedStateHandle: SavedStateHandle,
+   private val repository: PostRepository
+) : ViewModel() {
 
-   // LiveData for user posts
-   private val _userPosts = MutableLiveData<List<Post>>(emptyList())
-   val userPosts: LiveData<List<Post>> = _userPosts
+   companion object {
+      val Factory: ViewModelProvider.Factory = viewModelFactory {
+         initializer {
+            val application = (this[APPLICATION_KEY] as AdventureApplication)
+            ProfileViewModel(
+               this.createSavedStateHandle(),
+               application.postRepository
+            )
+         }
+      }
+   }
 
-   // LiveData for filtered posts
-   private val _filteredPosts = MutableLiveData<List<Post>>(emptyList())
-   val filteredPosts: LiveData<List<Post>> = _filteredPosts
+   // All posts
+   var allPosts by mutableStateOf<List<Post>>(emptyList())
+      private set
 
-   // LiveData for available tags
-   private val _availableTags = MutableLiveData<Set<String>>(emptySet())
-   val availableTags: LiveData<Set<String>> = _availableTags
+   // Filtered posts
+   var filteredPosts by mutableStateOf<List<Post>>(emptyList())
+      private set
 
+   // Available tags
+   var availableTags by mutableStateOf<Set<String>>(emptySet())
+      private set
+
+   // Initialize the ViewModel
    init {
       fetchUserPosts()
    }
 
+   // Fetch all posts
    fun fetchUserPosts() {
       viewModelScope.launch {
-         val posts = withContext(Dispatchers.IO) {
-            repository.allPosts.value ?: emptyList()
-         }
-         _userPosts.value = posts
-         _filteredPosts.value = posts
+         repository.allPosts.observeForever { posts ->
+            allPosts = posts ?: emptyList()
+            filteredPosts = posts ?: emptyList()
 
-         // Extract all unique tags from posts
-         val tags = posts.flatMap { it.tags }.toSet()
-         _availableTags.value = tags
+            // Extract all unique tags from posts
+            availableTags = posts?.flatMap { it.tags }?.toSet() ?: emptySet()
+         }
       }
    }
 
+   // Filter posts by tag
    fun filterPostsByTag(tag: String) {
-      viewModelScope.launch {
-         if (tag.isEmpty()) {
-            _filteredPosts.value = _userPosts.value
-         } else {
-            val filtered = _userPosts.value?.filter { post ->
-               post.tags.contains(tag)
-            } ?: emptyList()
-            _filteredPosts.value = filtered
+      if (tag.isEmpty()) {
+         filteredPosts = allPosts
+      } else {
+         filteredPosts = allPosts.filter { post ->
+            post.tags.contains(tag)
          }
       }
    }
 
+   // Delete a post
    fun deletePost(postId: Int) {
       viewModelScope.launch(Dispatchers.IO) {
          val post = repository.getPostById(postId).value
@@ -65,3 +94,4 @@ class ProfileViewModel(private val repository: PostRepository) : ViewModel() {
       }
    }
 }
+

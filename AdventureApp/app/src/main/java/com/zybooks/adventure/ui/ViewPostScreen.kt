@@ -1,7 +1,5 @@
 package com.zybooks.adventure.ui
 
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -11,20 +9,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -44,19 +39,15 @@ fun ViewPostScreen(
     onEditClick: (Post) -> Unit,
     onUpClick: () -> Unit = { },
     modifier: Modifier = Modifier,
-    viewModel: ViewPostViewModel = viewModel()
+    viewModel: ViewPostViewModel = viewModel(factory = ViewPostViewModel.Factory)
 ) {
-    val post by viewModel.post.observeAsState()
+    val post = viewModel.post
     val context = LocalContext.current
-
-    LaunchedEffect(postId) {
-        viewModel.loadPost(postId)
-    }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(post?.title ?: "View Post") },
+                title = { Text(post.title.ifEmpty { "View Post" }) },
                 navigationIcon = {
                     IconButton(onClick = onUpClick) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -65,89 +56,106 @@ fun ViewPostScreen(
             )
         },
         floatingActionButton = {
-            post?.let { currentPost ->
-                FloatingActionButton(onClick = { onEditClick(currentPost) }) {
-                    Icon(Icons.Default.Edit, contentDescription = "Edit Post")
-                }
+            FloatingActionButton(onClick = { onEditClick(post) }) {
+                Icon(Icons.Default.Edit, contentDescription = "Edit Post")
             }
         }
     ) { innerPadding ->
-        post?.let { currentPost ->
-            Column(
-                modifier = modifier
-                    .padding(innerPadding)
-                    .padding(16.dp)
-                    .verticalScroll(rememberScrollState())
-            ) {
-                // Image
-                if (currentPost.mediaUri.isNotEmpty()) {
-                    Image(
-                        painter = rememberAsyncImagePainter(
-                            ImageRequest.Builder(context)
-                                .data(currentPost.mediaUri)
-                                .build()
-                        ),
-                        contentDescription = currentPost.title,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(250.dp),
-                        contentScale = ContentScale.Crop
-                    )
-                }
+        Column(
+            modifier = modifier
+                .padding(innerPadding)
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState())
+        ) {
+            // Image
+            if (post.mediaUri.isNotEmpty()) {
+                Image(
+                    painter = rememberAsyncImagePainter(
+                        ImageRequest.Builder(context)
+                            .data(post.mediaUri)
+                            .build()
+                    ),
+                    contentDescription = post.title,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(250.dp),
+                    contentScale = ContentScale.Crop
+                )
+            }
 
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Title
+            Text(
+                text = post.title,
+                style = MaterialTheme.typography.headlineMedium
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Date
+            val dateFormat = SimpleDateFormat("MMM dd, yyyy 'at' hh:mm a", Locale.getDefault())
+            val dateString = dateFormat.format(Date(post.timestamp))
+            Text(
+                text = "Posted on $dateString",
+                style = MaterialTheme.typography.bodyMedium
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Description
+            Text(
+                text = "Description",
+                style = MaterialTheme.typography.titleMedium
+            )
+            Text(
+                text = post.description,
+                style = MaterialTheme.typography.bodyMedium
+            )
+
+            // Tags
+            if (post.tags.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Title
                 Text(
-                    text = currentPost.title,
-                    style = MaterialTheme.typography.headlineMedium
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Date
-                val dateFormat = SimpleDateFormat("MMM dd, yyyy 'at' hh:mm a", Locale.getDefault())
-                val dateString = dateFormat.format(Date(currentPost.timestamp))
-                Text(
-                    text = "Posted on $dateString",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Description
-                Text(
-                    text = "Description",
+                    text = "Tags",
                     style = MaterialTheme.typography.titleMedium
                 )
                 Text(
-                    text = currentPost.description,
+                    text = post.tags.joinToString(", "),
                     style = MaterialTheme.typography.bodyMedium
                 )
+            }
 
-                // Tags
-                if (currentPost.tags.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(16.dp))
+            // Location - display coordinates for copying
+            if (post.latitude != null && post.longitude != null) {
+                Spacer(modifier = Modifier.height(16.dp))
 
-                    Text(
-                        text = "Tags",
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    Text(
-                        text = currentPost.tags.joinToString(", "),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
+                Text(
+                    text = "Location",
+                    style = MaterialTheme.typography.titleMedium
+                )
 
-                // Location
-                if (currentPost.latitude != null && currentPost.longitude != null) {
-                    Spacer(modifier = Modifier.height(16.dp))
+                // Display coordinates in a selectable format
+                Text(
+                    text = "Latitude: ${post.latitude}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
 
-                    Text(
-                        text = "Location",
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                }
+                Text(
+                    text = "Longitude: ${post.longitude}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+
+                // Optional: Add a note about copying
+                Text(
+                    text = "Copy these coordinates to use in your preferred map application",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
             }
         }
     }

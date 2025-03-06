@@ -27,8 +27,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -46,22 +46,27 @@ fun UploadScreen(
     onUploadComplete: (Int) -> Unit,
     onUpClick: () -> Unit = { },
     modifier: Modifier = Modifier,
-    viewModel: UploadPostViewModel = viewModel()
+    viewModel: UploadPostViewModel = viewModel(factory = UploadPostViewModel.Factory)
 ) {
-    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
-    var title by remember { mutableStateOf("") }
-    var description by remember { mutableStateOf("") }
-    var tags by remember { mutableStateOf("") }
-    var directions by remember { mutableStateOf("") }
-    var latitude by remember { mutableStateOf("") }
-    var longitude by remember { mutableStateOf("") }
+    val mediaUri = viewModel.mediaUri
+    val title = viewModel.title
+    val description = viewModel.description
+    val latitude = viewModel.latitude
+    val longitude = viewModel.longitude
+    val directions = viewModel.specificDirections
+    val tags = viewModel.selectedTags
+    val uploadStatus by viewModel.uploadStatus.collectAsState(null)
 
-    val uploadStatus by viewModel.uploadStatus.observeAsState()
+    var tagsText by remember { mutableStateOf("") }
+
+    // Update tags text when viewModel tags change
+    LaunchedEffect(tags) {
+        tagsText = tags.joinToString(", ")
+    }
 
     val imagePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        selectedImageUri = uri
         uri?.let { viewModel.setMediaUri(it) }
     }
 
@@ -93,9 +98,9 @@ fun UploadScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            if (selectedImageUri != null) {
+            if (mediaUri != null) {
                 Image(
-                    painter = rememberAsyncImagePainter(selectedImageUri),
+                    painter = rememberAsyncImagePainter(mediaUri),
                     contentDescription = "Selected image",
                     modifier = Modifier
                         .fillMaxWidth()
@@ -108,10 +113,7 @@ fun UploadScreen(
 
             OutlinedTextField(
                 value = title,
-                onValueChange = {
-                    title = it
-                    viewModel.setTitle(it)
-                },
+                onValueChange = { viewModel.setTitle(it) },
                 label = { Text("Title") },
                 modifier = Modifier.fillMaxWidth()
             )
@@ -120,10 +122,7 @@ fun UploadScreen(
 
             OutlinedTextField(
                 value = description,
-                onValueChange = {
-                    description = it
-                    viewModel.setDescription(it)
-                },
+                onValueChange = { viewModel.setDescription(it) },
                 label = { Text("Description") },
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 3
@@ -132,9 +131,9 @@ fun UploadScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             OutlinedTextField(
-                value = tags,
+                value = tagsText,
                 onValueChange = {
-                    tags = it
+                    tagsText = it
                     viewModel.setSelectedTags(it.split(",").map { tag -> tag.trim() }.filter { tag -> tag.isNotBlank() })
                 },
                 label = { Text("Tags (comma separated)") },
@@ -157,10 +156,7 @@ fun UploadScreen(
             ) {
                 OutlinedTextField(
                     value = latitude,
-                    onValueChange = {
-                        latitude = it
-                        viewModel.setLatitude(it)
-                    },
+                    onValueChange = { viewModel.setLatitude(it) },
                     label = { Text("Latitude") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.weight(1f)
@@ -170,10 +166,7 @@ fun UploadScreen(
 
                 OutlinedTextField(
                     value = longitude,
-                    onValueChange = {
-                        longitude = it
-                        viewModel.setLongitude(it)
-                    },
+                    onValueChange = { viewModel.setLongitude(it) },
                     label = { Text("Longitude") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.weight(1f)
@@ -184,10 +177,7 @@ fun UploadScreen(
 
             OutlinedTextField(
                 value = directions,
-                onValueChange = {
-                    directions = it
-                    viewModel.setSpecificDirections(it)
-                },
+                onValueChange = { viewModel.setSpecificDirections(it) },
                 label = { Text("Directions (optional)") },
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 2
@@ -197,7 +187,7 @@ fun UploadScreen(
 
             Button(
                 onClick = { viewModel.savePost() },
-                enabled = selectedImageUri != null && title.isNotBlank(),
+                enabled = mediaUri != null && title.isNotBlank(),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Upload Post")
@@ -205,12 +195,13 @@ fun UploadScreen(
 
             // Handle upload status
             when (val status = uploadStatus) {
-                is UploadViewModel.UploadStatus.Success -> {
+                is UploadPostViewModel.UploadStatus.Success -> {
                     LaunchedEffect(status) {
+                        viewModel.resetUploadStatus()
                         onUploadComplete(status.postId)
                     }
                 }
-                is UploadViewModel.UploadStatus.Error -> {
+                is UploadPostViewModel.UploadStatus.Error -> {
                     Text(
                         text = status.message,
                         color = MaterialTheme.colorScheme.error,

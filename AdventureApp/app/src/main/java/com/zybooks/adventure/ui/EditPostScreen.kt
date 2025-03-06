@@ -27,8 +27,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -49,33 +49,24 @@ fun EditPostScreen(
     onSaveComplete: () -> Unit,
     onUpClick: () -> Unit = { },
     modifier: Modifier = Modifier,
-    viewModel: EditPostViewModel = viewModel()
+    viewModel: EditPostViewModel = viewModel(factory = EditPostViewModel.Factory)
 ) {
-    val post by viewModel.post.observeAsState()
-    val updatedTitle by viewModel.updatedTitle.observeAsState("")
-    val updatedLatitude by viewModel.updatedLatitude.observeAsState("")
-    val updatedLongitude by viewModel.updatedLongitude.observeAsState("")
-    val updatedDirections by viewModel.updatedDirections.observeAsState("")
-    val updatedTags by viewModel.updatedTags.observeAsState(emptyList())
-    val updatedDescription by viewModel.updatedDescription.observeAsState("")
-    val updatedMediaUri by viewModel.updatedMediaUri.observeAsState()
-    val updateStatus by viewModel.updateStatus.observeAsState()
+    val post = viewModel.post
+    val updatedMediaUri = viewModel.updatedMediaUri
+    val updateStatus by viewModel.updateStatus.collectAsState(null)
     val context = LocalContext.current
 
-    var tagsText by remember { mutableStateOf("") }
+    var tagsText by remember { mutableStateOf(post.tags.joinToString(", ")) }
 
-    LaunchedEffect(postId) {
-        viewModel.loadPost(postId)
-    }
-
-    LaunchedEffect(updatedTags) {
-        tagsText = updatedTags.joinToString(", ")
+    // Update tags text when post tags change
+    LaunchedEffect(post.tags) {
+        tagsText = post.tags.joinToString(", ")
     }
 
     val imagePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        uri?.let { viewModel.addNewMedia(it) }
+        uri?.let { viewModel.setMediaUri(it) }
     }
 
     Scaffold(
@@ -90,151 +81,139 @@ fun EditPostScreen(
             )
         }
     ) { innerPadding ->
-        post?.let { currentPost ->
-            Column(
-                modifier = modifier
-                    .padding(innerPadding)
-                    .padding(16.dp)
-                    .verticalScroll(rememberScrollState()),
-                horizontalAlignment = Alignment.CenterHorizontally
+        Column(
+            modifier = modifier
+                .padding(innerPadding)
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Current or updated image
+            if (updatedMediaUri != null) {
+                Image(
+                    painter = rememberAsyncImagePainter(updatedMediaUri),
+                    contentDescription = "Updated image",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp),
+                    contentScale = ContentScale.Crop
+                )
+            } else if (post.mediaUri.isNotEmpty()) {
+                Image(
+                    painter = rememberAsyncImagePainter(
+                        ImageRequest.Builder(context)
+                            .data(post.mediaUri)
+                            .build()
+                    ),
+                    contentDescription = post.title,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp),
+                    contentScale = ContentScale.Crop
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Button(
+                onClick = { imagePicker.launch("image/*") },
+                modifier = Modifier.fillMaxWidth()
             ) {
-                // Current or updated image
-                if (updatedMediaUri != null) {
-                    Image(
-                        painter = rememberAsyncImagePainter(updatedMediaUri),
-                        contentDescription = "Updated image",
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(200.dp),
-                        contentScale = ContentScale.Crop
-                    )
-                } else if (currentPost.mediaUri.isNotEmpty()) {
-                    Image(
-                        painter = rememberAsyncImagePainter(
-                            ImageRequest.Builder(context)
-                                .data(currentPost.mediaUri)
-                                .build()
-                        ),
-                        contentDescription = currentPost.title,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(200.dp),
-                        contentScale = ContentScale.Crop
-                    )
-                }
+                Text("Change Image")
+            }
 
-                Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-                Button(
-                    onClick = { imagePicker.launch("image/*") },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Change Image")
-                }
+            // Title
+            OutlinedTextField(
+                value = post.title,
+                onValueChange = { viewModel.updateTitle(it) },
+                label = { Text("Title") },
+                modifier = Modifier.fillMaxWidth()
+            )
 
-                Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-                // Title
+            // Description
+            OutlinedTextField(
+                value = post.description,
+                onValueChange = { viewModel.updateDescription(it) },
+                label = { Text("Description") },
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 3
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Tags
+            OutlinedTextField(
+                value = tagsText,
+                onValueChange = {
+                    tagsText = it
+                    viewModel.updateTags(it.split(",").map { tag -> tag.trim() }.filter { tag -> tag.isNotBlank() })
+                },
+                label = { Text("Tags (comma separated)") },
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Location input fields
+            Text(
+                text = "Location (optional)",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.align(Alignment.Start)
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 OutlinedTextField(
-                    value = updatedTitle,
-                    onValueChange = { viewModel.setUpdatedTitle(it) },
-                    label = { Text("Title") },
-                    modifier = Modifier.fillMaxWidth()
+                    value = post.latitude?.toString() ?: "",
+                    onValueChange = { viewModel.updateLatitude(it) },
+                    label = { Text("Latitude") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    modifier = Modifier.weight(1f)
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.width(8.dp))
 
-                // Description
                 OutlinedTextField(
-                    value = updatedDescription,
-                    onValueChange = { viewModel.setUpdatedDescription(it) },
-                    label = { Text("Description") },
-                    modifier = Modifier.fillMaxWidth(),
-                    minLines = 3
+                    value = post.longitude?.toString() ?: "",
+                    onValueChange = { viewModel.updateLongitude(it) },
+                    label = { Text("Longitude") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    modifier = Modifier.weight(1f)
                 )
+            }
 
-                Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
-                // Tags
-                OutlinedTextField(
-                    value = tagsText,
-                    onValueChange = {
-                        tagsText = it
-                        viewModel.setUpdatedTags(it.split(",").map { tag -> tag.trim() }.filter { tag -> tag.isNotBlank() })
-                    },
-                    label = { Text("Tags (comma separated)") },
-                    modifier = Modifier.fillMaxWidth()
-                )
+            Button(
+                onClick = { viewModel.savePost() },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Save Changes")
+            }
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Location input fields
-                Text(
-                    text = "Location (optional)",
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.align(Alignment.Start)
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    OutlinedTextField(
-                        value = updatedLatitude,
-                        onValueChange = { viewModel.setUpdatedLatitude(it) },
-                        label = { Text("Latitude") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    OutlinedTextField(
-                        value = updatedLongitude,
-                        onValueChange = { viewModel.setUpdatedLongitude(it) },
-                        label = { Text("Longitude") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Directions
-                OutlinedTextField(
-                    value = updatedDirections,
-                    onValueChange = { viewModel.setUpdatedDirections(it) },
-                    label = { Text("Directions") },
-                    modifier = Modifier.fillMaxWidth(),
-                    minLines = 2
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                Button(
-                    onClick = { viewModel.updatePost() },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Save Changes")
-                }
-
-                // Handle update status
-                when (updateStatus) {
-                    is EditPostViewModel.UpdateStatus.Success -> {
-                        LaunchedEffect(Unit) {
-                            onSaveComplete()
-                        }
+            // Handle update status
+            when (updateStatus) {
+                is EditPostViewModel.UpdateStatus.Success -> {
+                    LaunchedEffect(updateStatus) {
+                        viewModel.resetUpdateStatus()
+                        onSaveComplete()
                     }
-                    is EditPostViewModel.UpdateStatus.Error -> {
-                        Text(
-                            text = (updateStatus as EditPostViewModel.UpdateStatus.Error).message,
-                            color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.padding(top = 8.dp)
-                        )
-                    }
-                    else -> {}
                 }
+                is EditPostViewModel.UpdateStatus.Error -> {
+                    Text(
+                        text = (updateStatus as EditPostViewModel.UpdateStatus.Error).message,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
+                else -> {}
             }
         }
     }
