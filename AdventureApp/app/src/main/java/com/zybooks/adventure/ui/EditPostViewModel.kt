@@ -85,11 +85,6 @@ class EditPostViewModel(
       post = post.copy(longitude = longitude.toDoubleOrNull())
    }
 
-   // Update post tags
-   fun updateTags(tags: List<String>) {
-      post = post.copy(tags = tags)
-   }
-
    // Set new media URI
    fun setMediaUri(uri: Uri) {
       updatedMediaUri = uri

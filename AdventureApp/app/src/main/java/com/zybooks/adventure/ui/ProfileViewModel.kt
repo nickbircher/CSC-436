@@ -46,10 +46,6 @@ class ProfileViewModel(
    var filteredPosts by mutableStateOf<List<Post>>(emptyList())
       private set
 
-   // Available tags
-   var availableTags by mutableStateOf<Set<String>>(emptySet())
-      private set
-
    // Initialize the ViewModel
    init {
       fetchUserPosts()
@@ -62,22 +58,10 @@ class ProfileViewModel(
             allPosts = posts ?: emptyList()
             filteredPosts = posts ?: emptyList()
 
-            // Extract all unique tags from posts
-            availableTags = posts?.flatMap { it.tags }?.toSet() ?: emptySet()
          }
       }
    }
 
-   // Filter posts by tag
-   fun filterPostsByTag(tag: String) {
-      if (tag.isEmpty()) {
-         filteredPosts = allPosts
-      } else {
-         filteredPosts = allPosts.filter { post ->
-            post.tags.contains(tag)
-         }
-      }
-   }
 
    // Delete a post
    fun deletePost(postId: Int) {

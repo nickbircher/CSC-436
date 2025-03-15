@@ -1,8 +1,10 @@
 package com.zybooks.adventure.ui
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -53,8 +55,6 @@ fun ProfileScreen(
     viewModel: ProfileViewModel = viewModel(factory = ProfileViewModel.Factory)
 ) {
     val posts = viewModel.filteredPosts
-    val availableTags = viewModel.availableTags
-    var selectedTag by remember { mutableStateOf("") }
     val context = LocalContext.current
 
     Scaffold(
@@ -72,43 +72,6 @@ fun ProfileScreen(
         Column(
             modifier = modifier.padding(innerPadding)
         ) {
-            // Tags filter
-            if (availableTags.isNotEmpty()) {
-                Text(
-                    text = "Filter by tag:",
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                )
-
-                LazyRow(
-                    contentPadding = PaddingValues(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    item {
-                        AssistChip(
-                            onClick = {
-                                selectedTag = ""
-                                viewModel.filterPostsByTag("")
-                            },
-                            label = { Text("All") },
-                            selected = selectedTag.isEmpty()
-                        )
-                    }
-
-                    items(availableTags.toList()) { tag ->
-                        AssistChip(
-                            onClick = {
-                                selectedTag = tag
-                                viewModel.filterPostsByTag(tag)
-                            },
-                            label = { Text(tag) },
-                            selected = selectedTag == tag
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-            }
 
             if (posts.isEmpty()) {
                 Column(
@@ -165,18 +128,36 @@ fun PostItem(
             .clickable(onClick = onClick)
     ) {
         // Image
-        Image(
-            painter = rememberAsyncImagePainter(
-                ImageRequest.Builder(context)
-                    .data(post.mediaUri.takeIf { it.isNotEmpty() } ?: R.drawable.placeholder)
-                    .build()
-            ),
-            contentDescription = post.title,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(160.dp),
-            contentScale = ContentScale.Crop
-        )
+        if (post.mediaUri.isNotEmpty()) {
+            // If we have a media URI, load it
+            Image(
+                painter = rememberAsyncImagePainter(
+                    ImageRequest.Builder(context)
+                        .data(post.mediaUri)
+                        .build()
+                ),
+                contentDescription = post.title,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(160.dp),
+                contentScale = ContentScale.Crop
+            )
+        } else {
+            // If no media URI, show a colored box as placeholder
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(160.dp)
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = post.title.takeIf { it.isNotEmpty() }?.take(1)?.uppercase() ?: "P",
+                    style = MaterialTheme.typography.headlineLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
 
         // Title and delete button
         Row(

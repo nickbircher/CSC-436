@@ -56,9 +56,6 @@ class UploadPostViewModel(
    var longitude by mutableStateOf("")
       private set
 
-   var specificDirections by mutableStateOf("")
-      private set
-
    var selectedTags by mutableStateOf<List<String>>(emptyList())
       private set
 
@@ -67,39 +64,30 @@ class UploadPostViewModel(
    val uploadStatus: StateFlow<UploadStatus?> = _uploadStatus.asStateFlow()
 
    // Set media URI
-   fun setMediaUri(uri: Uri?) {
+   fun updateMediaUri(uri: Uri?) {
       mediaUri = uri
    }
 
    // Set title
-   fun setTitle(value: String) {
+   fun updateTitle(value: String) {
       title = value
    }
 
    // Set description
-   fun setDescription(value: String) {
+   fun updateDescription(value: String) {
       description = value
    }
 
    // Set latitude
-   fun setLatitude(value: String) {
+   fun updateLatitude(value: String) {
       latitude = value
    }
 
    // Set longitude
-   fun setLongitude(value: String) {
+   fun updateLongitude(value: String) {
       longitude = value
    }
 
-   // Set specific directions
-   fun setSpecificDirections(value: String) {
-      specificDirections = value
-   }
-
-   // Set selected tags
-   fun setSelectedTags(tags: List<String>) {
-      selectedTags = tags
-   }
 
    // Save post
    fun savePost() {
@@ -124,7 +112,6 @@ class UploadPostViewModel(
                      description = description,
                      latitude = lat,
                      longitude = lng,
-                     tags = selectedTags,
                      timestamp = System.currentTimeMillis()
                   )
 

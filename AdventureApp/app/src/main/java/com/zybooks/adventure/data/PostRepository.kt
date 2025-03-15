@@ -60,10 +60,6 @@ class PostRepository(private val context: Context) {
         postDao.deletePost(post)
     }
 
-    fun getPostsByTag(tag: String): LiveData<List<Post>> {
-        return postDao.getPostsByTag(tag)
-    }
-
     // Media storage methods
     suspend fun saveMediaToStorage(inputUri: Uri): String? {
         val contentResolver = context.contentResolver
