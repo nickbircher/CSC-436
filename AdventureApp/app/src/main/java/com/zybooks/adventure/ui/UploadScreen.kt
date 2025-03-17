@@ -53,7 +53,6 @@ fun UploadScreen(
     val description = viewModel.description
     val latitude = viewModel.latitude
     val longitude = viewModel.longitude
-    val directions = viewModel.specificDirections
     val tags = viewModel.selectedTags
     val uploadStatus by viewModel.uploadStatus.collectAsState(null)
 
@@ -67,7 +66,7 @@ fun UploadScreen(
     val imagePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        uri?.let { viewModel.setMediaUri(it) }
+        uri?.let { viewModel.updateMediaUri(it) }
     }
 
     Scaffold(
@@ -113,7 +112,7 @@ fun UploadScreen(
 
             OutlinedTextField(
                 value = title,
-                onValueChange = { viewModel.setTitle(it) },
+                onValueChange = { viewModel.updateTitle(it) },
                 label = { Text("Title") },
                 modifier = Modifier.fillMaxWidth()
             )
@@ -122,23 +121,13 @@ fun UploadScreen(
 
             OutlinedTextField(
                 value = description,
-                onValueChange = { viewModel.setDescription(it) },
+                onValueChange = { viewModel.updateDescription(it) },
                 label = { Text("Description") },
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 3
             )
 
             Spacer(modifier = Modifier.height(8.dp))
-
-            OutlinedTextField(
-                value = tagsText,
-                onValueChange = {
-                    tagsText = it
-                    viewModel.setSelectedTags(it.split(",").map { tag -> tag.trim() }.filter { tag -> tag.isNotBlank() })
-                },
-                label = { Text("Tags (comma separated)") },
-                modifier = Modifier.fillMaxWidth()
-            )
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -156,7 +145,7 @@ fun UploadScreen(
             ) {
                 OutlinedTextField(
                     value = latitude,
-                    onValueChange = { viewModel.setLatitude(it) },
+                    onValueChange = { viewModel.updateLatitude(it) },
                     label = { Text("Latitude") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.weight(1f)
@@ -166,7 +155,7 @@ fun UploadScreen(
 
                 OutlinedTextField(
                     value = longitude,
-                    onValueChange = { viewModel.setLongitude(it) },
+                    onValueChange = { viewModel.updateLongitude(it) },
                     label = { Text("Longitude") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.weight(1f)
@@ -174,14 +163,6 @@ fun UploadScreen(
             }
 
             Spacer(modifier = Modifier.height(8.dp))
-
-            OutlinedTextField(
-                value = directions,
-                onValueChange = { viewModel.setSpecificDirections(it) },
-                label = { Text("Directions (optional)") },
-                modifier = Modifier.fillMaxWidth(),
-                minLines = 2
-            )
 
             Spacer(modifier = Modifier.height(24.dp))
 

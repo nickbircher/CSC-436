@@ -115,20 +115,6 @@ fun ViewPostScreen(
                 )
             }
 
-            // Tags
-            if (post.tags.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Text(
-                    text = "Tags",
-                    style = MaterialTheme.typography.titleMedium
-                )
-                Text(
-                    text = post.tags.joinToString(", "),
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
-
             // Location - display coordinates for copying
             if (post.latitude != null && post.longitude != null) {
                 Spacer(modifier = Modifier.height(16.dp))

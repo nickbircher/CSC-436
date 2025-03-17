@@ -24,7 +24,4 @@ interface PostDao {
 
     @Delete
     suspend fun deletePost(post: Post)
-
-    @Query("SELECT * FROM posts WHERE tags LIKE '%' || :tag || '%'")
-    fun getPostsByTag(tag: String): LiveData<List<Post>>
 }

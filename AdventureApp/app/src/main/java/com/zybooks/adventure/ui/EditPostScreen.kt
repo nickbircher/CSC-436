@@ -56,13 +56,6 @@ fun EditPostScreen(
     val updateStatus by viewModel.updateStatus.collectAsState(null)
     val context = LocalContext.current
 
-    var tagsText by remember { mutableStateOf(post.tags.joinToString(", ")) }
-
-    // Update tags text when post tags change
-    LaunchedEffect(post.tags) {
-        tagsText = post.tags.joinToString(", ")
-    }
-
     val imagePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
@@ -135,26 +128,17 @@ fun EditPostScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             // Description
-            OutlinedTextField(
-                value = post.description,
-                onValueChange = { viewModel.updateDescription(it) },
-                label = { Text("Description") },
-                modifier = Modifier.fillMaxWidth(),
-                minLines = 3
-            )
+            post.description?.let {
+                OutlinedTextField(
+                    value = it,
+                    onValueChange = { viewModel.updateDescription(it) },
+                    label = { Text("Description") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 3
+                )
+            }
 
             Spacer(modifier = Modifier.height(8.dp))
-
-            // Tags
-            OutlinedTextField(
-                value = tagsText,
-                onValueChange = {
-                    tagsText = it
-                    viewModel.updateTags(it.split(",").map { tag -> tag.trim() }.filter { tag -> tag.isNotBlank() })
-                },
-                label = { Text("Tags (comma separated)") },
-                modifier = Modifier.fillMaxWidth()
-            )
 
             Spacer(modifier = Modifier.height(16.dp))
 
